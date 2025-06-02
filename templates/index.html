@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tweet Screenshot Generator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 700px;
+            box-sizing: border-box;
+            margin-bottom: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-size: 28px;
+            color: #1d9bf0; /* Twitter blue */
+            margin-bottom: 10px;
+        }
+        .subheading {
+            font-size: 16px;
+            color: #536471; /* Twitter text gray */
+            margin-top: 0;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .input-mode-toggle {
+            display: flex;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            overflow: hidden;
+            background-color: #f7f9fa;
+            border: 1px solid #cfd9de;
+            width: fit-content;
+        }
+        .input-mode-toggle button {
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #536471;
+            cursor: pointer;
+            margin: 0;
+            width: auto;
+            border-radius: 0;
+        }
+        .input-mode-toggle button.active {
+            background-color: #1d9bf0;
+            color: white;
+        }
+        .input-container {
+            display: none;
+        }
+        .input-container.active {
+            display: block;
+        }
+        textarea {
+            padding: 12px;
+            border: 1px solid #cfd9de;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 120px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        label {
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .help-text {
+            font-size: 13px;
+            color: #536471;
+            margin-top: 4px;
+        }
+        input[type="url"], select {
+            padding: 12px;
+            border: 1px solid #cfd9de;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        input[type="url"]:focus, select:focus {
+            border-color: #1d9bf0;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.3);
+        }
+        button {
+            background-color: #1d9bf0;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #1a8cd8;
+        }
+        .screenshot-container {
+            margin-top: 40px;
+            text-align: center;
+        }
+        .screenshot-container img {
+            max-width: 100%;
+            border: 1px solid #dddfe2;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .screenshot-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+            gap: 10px;
+        }
+        .download-btn {
+            background-color: #0f6cbd;
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .download-btn:hover {
+            background-color: #0d5aa7;
+        }
+        .error-message {
+            color: #fa383e;
+            background-color: #ffebe6;
+            border: 1px solid #fa383e;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .loading-message {
+            text-align: center;
+            color: #1d9bf0;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid rgba(29, 155, 240, 0.2);
+            border-top-color: #1d9bf0;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes spin {
+            to {transform: rotate(360deg);}
+        }
+        .theme-previews {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .theme-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+        }
+        .theme-option.selected {
+            border-color: #1d9bf0;
+            background-color: rgba(29, 155, 240, 0.1);
+        }
+        .theme-preview {
+            width: 120px;
+            height: 80px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .theme-preview.light {
+            background-color: #ffffff;
+            color: #0f1419;
+            border: 1px solid #cfd9de;
+        }
+        .theme-preview.dark {
+            background-color: #15202b;
+            color: #ffffff;
+        }
+        .theme-preview.auto {
+            background: linear-gradient(135deg, #ffffff 0%, #ffffff 49%, #15202b 51%, #15202b 100%);
+            color: transparent;
+        }
+        .theme-preview.random {
+            background: linear-gradient(45deg, #f06, #06f, #0f0, #ff0);
+            color: white; /* Ensure text is visible if you add any */
+            text-align: center; /* Center text if any */
+            line-height: 80px; /* Vertically center text if any */
+        }
+        .theme-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #536471;
+            font-size: 13px;
+        }
+        .bulk-results-container {
+            margin-top: 30px;
+            border-top: 1px solid #e1e8ed;
+            padding-top: 20px;
+        }
+        .bulk-results-container h2 {
+            font-size: 20px;
+            color: #1d9bf0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .screenshot-item {
+            background-color: #f7f9fa;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .screenshot-item.error-item {
+            border-left: 4px solid #fa383e;
+        }
+        .tweet-url-display {
+            font-size: 14px;
+            color: #536471;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        .tweet-url-display a {
+            color: #1d9bf0;
+            text-decoration: none;
+        }
+        .tweet-url-display a:hover {
+            text-decoration: underline;
+        }
+        .individual-bulk-screenshot img {
+            max-width: 100%;
+            max-height: 400px; /* Limit height for bulk display */
+            object-fit: contain; /* Ensure aspect ratio is maintained */
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .error-message.small-error {
+            font-size: 14px;
+            padding: 8px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Tweet Screenshot Generator</h1>
+            <p class="subheading">Generate clean, presentation-ready images of tweets</p>
+        </div>
+        
+        <form method="POST" id="screenshotForm">
+            <div class="form-group">
+                <label>Tweet URL Input Mode</label>
+                <div class="input-mode-toggle">
+                    <button type="button" id="singleModeBtn" class="active" onclick="switchInputMode('single')">Single URL</button>
+                    <button type="button" id="bulkModeBtn" onclick="switchInputMode('bulk')">Bulk URLs</button>
+                </div>
+                
+                <div id="singleInputContainer" class="input-container active">
+                    <input type="url" id="tweet_url" name="tweet_url" 
+                           placeholder="https://x.com/username/status/123456789" 
+                           value="{{ submitted_tweet_url if submitted_tweet_url else '' }}">
+                    <p class="help-text">Enter a URL from Twitter (twitter.com) or X (x.com)</p>
+                </div>
+                
+                <div id="bulkInputContainer" class="input-container">
+                    <textarea id="bulk_tweet_urls" name="bulk_tweet_urls" 
+                              placeholder="Enter multiple tweet URLs, one per line:&#10;https://x.com/username/status/123456789&#10;https://twitter.com/username/status/987654321&#10;...">{{ submitted_bulk_urls if submitted_bulk_urls else '' }}</textarea>
+                    <p class="help-text">Enter multiple URLs from Twitter or X, one per line</p>
+                    <input type="hidden" id="input_mode" name="input_mode" value="single">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="night_mode">Choose Theme</label>
+                
+                <div class="theme-previews">
+                    <div class="theme-option" onclick="selectTheme(0)" id="theme-0">
+                        <div class="theme-preview light">Light</div>
+                        <span class="theme-name">Light Mode</span>
+                    </div>
+                    
+                    <div class="theme-option" onclick="selectTheme(1)" id="theme-1">
+                        <div class="theme-preview dark">Dark</div>
+                        <span class="theme-name">Dark Mode</span>
+                    </div>
+                    
+                    <div class="theme-option" onclick="selectTheme(2)" id="theme-2">
+                        <div class="theme-preview auto">Auto</div>
+                        <span class="theme-name">Black Mode</span>
+                    </div>
+                    
+                    <div class="theme-option" onclick="selectTheme('random')" id="theme-random">
+                        <div class="theme-preview random">Random</div>
+                        <span class="theme-name">Random Theme</span>
+                    </div>
+                </div>
+                <input type="hidden" id="night_mode" name="night_mode" value="{{ selected_night_mode if selected_night_mode is not none else 2 }}">
+            </div>
+            
+            <button type="submit" id="submitBtn">Generate Screenshot</button>
+        </form>
+
+        <div id="loadingContainer" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <div class="loading-message">Generating screenshot(s), please wait...</div>
+        </div>
+
+        {% if error_message %}
+            <div class="error-message">{{ error_message }}</div>
+        {% endif %}
+
+        {# Display for single screenshot result #}
+        {% if input_mode == 'single' and screenshot_url %}
+            <div class="screenshot-container" id="single_screenshot_result">
+                <h2>Generated Screenshot</h2>
+                <img src="{{ screenshot_url }}" alt="Tweet Screenshot for {{ submitted_tweet_url }}">
+                <div class="screenshot-actions">
+                    <a href="{{ screenshot_url }}" download class="download-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Download Image
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+
+        {# Display for bulk screenshot results #}
+        {% if input_mode == 'bulk' and screenshots %}
+            <div class="bulk-results-container" id="bulk_screenshot_results">
+                <h2>Bulk Screenshot Results ({{ screenshots|length }} URLs processed)</h2>
+                {% for item in screenshots %}
+                    <div class="screenshot-item {% if item.error %}error-item{% endif %}">
+                        <p class="tweet-url-display">Original URL: <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></p>
+                        {% if item.screenshot_url %}
+                            <div class="screenshot-container individual-bulk-screenshot">
+                                <img src="{{ item.screenshot_url }}" alt="Tweet Screenshot for {{ item.url }}">
+                                <div class="screenshot-actions">
+                                    <a href="{{ item.screenshot_url }}" download="{{ item.filename | default('screenshot.png') }}" class="download-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                        Download Image
+                                    </a>
+                                </div>
+                            </div>
+                        {% elif item.error %}
+                            <p class="error-message small-error">Error: {{ item.error }}</p>
+                        {% else %}
+                            <p class="error-message small-error">No screenshot generated and no specific error message.</p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+    
+    <footer>
+        <p>For questions or issues, contact your team administrator</p>
+    </footer>
+
+    <script>
+        // Show selected theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get selected value from the hidden select field
+            const nightModeSelect = document.getElementById('night_mode');
+            const selectedValue = nightModeSelect.options[nightModeSelect.selectedIndex].value;
+            const selectedNightMode = nightModeSelect.value;
+            
+            // Highlight the selected theme
+            if (selectedValue !== null && selectedValue !== '') {
+                const themeOption = document.getElementById(`theme-${selectedValue}`);
+                if (themeOption) {
+                    themeOption.classList.add('selected');
+                }
+            } else {
+                // Default to Black theme (value 2) if nothing is selected (e.g. on initial load)
+                document.getElementById('theme-2').classList.add('selected');
+                document.getElementById('night_mode').value = 2;
+            }
+            
+            // Initialize input mode based on server-side value or default to single
+            const initialInputMode = "{{ input_mode | default('single') }}";
+            switchInputMode(initialInputMode);
+            if (initialInputMode === 'bulk') {
+                document.getElementById('bulkModeBtn').classList.add('active');
+                document.getElementById('singleModeBtn').classList.remove('active');
+            } else {
+                document.getElementById('singleModeBtn').classList.add('active');
+                document.getElementById('bulkModeBtn').classList.remove('active');
+            }
+        });
+        
+        // Visual theme selection
+        function selectTheme(themeValue) {
+            // Update hidden select field
+            document.getElementById('night_mode').value = themeValue;
+            
+            // Update UI
+            const options = document.querySelectorAll('.theme-option');
+            options.forEach(option => option.classList.remove('selected'));
+            document.getElementById(`theme-${themeValue}`).classList.add('selected');
+        }
+        
+        // Switch between single and bulk URL input modes
+        function switchInputMode(mode) {
+            // Update button states
+            document.getElementById('singleModeBtn').classList.toggle('active', mode === 'single');
+            document.getElementById('bulkModeBtn').classList.toggle('active', mode === 'bulk');
+            
+            // Show/hide appropriate containers
+            document.getElementById('singleInputContainer').classList.toggle('active', mode === 'single');
+            document.getElementById('bulkInputContainer').classList.toggle('active', mode === 'bulk');
+            
+            // Update the hidden input mode field
+            document.getElementById('input_mode').value = mode;
+            
+            // Update form validation
+            if (mode === 'single') {
+                document.getElementById('tweet_url').setAttribute('required', '');
+                document.getElementById('bulk_tweet_urls').removeAttribute('required');
+            } else {
+                document.getElementById('bulk_tweet_urls').setAttribute('required', '');
+                document.getElementById('tweet_url').removeAttribute('required');
+            }
+        }
+        
+        // Form validation before submission
+        document.getElementById('screenshotForm').addEventListener('submit', function(e) {
+            const mode = document.getElementById('input_mode').value;
+            
+            if (mode === 'single') {
+                const url = document.getElementById('tweet_url').value.trim();
+                if (!url) {
+                    alert('Please enter a valid tweet URL');
+                    e.preventDefault();
+                    return false;
+                }
+            } else {
+                const urls = document.getElementById('bulk_tweet_urls').value.trim();
+                if (!urls) {
+                    alert('Please enter at least one tweet URL');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            // Show loading animation
+            const loadingMessageDiv = document.querySelector('#loadingContainer .loading-message');
+            if (mode === 'single') {
+                loadingMessageDiv.textContent = 'Generating screenshot, please wait...';
+            } else {
+                loadingMessageDiv.textContent = 'Generating screenshots for bulk URLs, please wait...';
+            }
+            document.getElementById('loadingContainer').style.display = 'flex';
+        });
+        
+        // Add a specific style for the random theme preview if desired
+        const randomPreview = document.querySelector('.theme-preview.random');
+        if (randomPreview) {
+            randomPreview.textContent = '?'; // Display a question mark
+        }
+    </script>
+</body>
+</html>
