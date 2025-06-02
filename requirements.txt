@@ -3,3 +3,5 @@ tweet-capture
 # You might need to specify versions if you encounter compatibility problems, e.g.:
 # tweetcapture==0.1.5
 Flask
+gunicorn
+Werkzeug

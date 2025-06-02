@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  tweet-screenshotter:
+    build: .
+    ports:
+      - "5001:5000"
+    volumes:
+      # Mount the output directory if you want to access screenshots outside the container
+      - ./output_screenshots:/app/output_screenshots
+    restart: unless-stopped
+    environment:
+      # Add any environment variables your application needs
+      - FLASK_ENV=production

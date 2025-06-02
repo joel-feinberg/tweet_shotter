@@ -36,6 +36,34 @@ For production deployment, consider using Gunicorn as WSGI server:
 
 3. Consider using Nginx or Apache as a reverse proxy in front of Gunicorn.
 
+## Docker Deployment
+
+The easiest way to deploy the application is using Docker:
+
+1. Build and start the container using Docker Compose:
+   ```
+   docker-compose up -d
+   ```
+
+2. Access the web interface at http://localhost:5001
+
+3. To stop the application:
+   ```
+   docker-compose down
+   ```
+
+Alternatively, you can build and run the Docker container manually:
+
+1. Build the Docker image:
+   ```
+   docker build -t tweet-screenshotter .
+   ```
+
+2. Run the container:
+   ```
+   docker run -p 5001:5000 -d tweet-screenshotter
+   ```
+
 ## API Usage
 
 The application provides a simple API for programmatic access:
