@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install system dependencies including Chrome
 # Includes fonts, language packs, and X11 for headless Chrome
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     gnupg \
     fonts-liberation \
@@ -26,25 +26,66 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     xvfb \
     unzip \
+    # Add jq here as it's needed for the new chromedriver step
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Chrome
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
     && apt-get update \
-    && apt-get install -y google-chrome-stable \
+    && apt-get install -y --no-install-recommends google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up ChromeDriver
-# Determine the Chrome version
-RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d. -f1) \
-    && wget -q "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}" -O - > /tmp/chromedriver_version \
-    && CHROMEDRIVER_VERSION=$(cat /tmp/chromedriver_version) \
-    && wget -q "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip" -O /tmp/chromedriver.zip \
-    && mkdir -p /app/drivers \
-    && unzip /tmp/chromedriver.zip -d /app/drivers \
-    && chmod +x /app/drivers/chromedriver \
-    && rm /tmp/chromedriver.zip /tmp/chromedriver_version
+# Set up ChromeDriver (<<<<< THIS SECTION IS UPDATED >>>>>)
+RUN \
+    # Fetch the download URL for the latest stable ChromeDriver for Linux64
+    CHROMEDRIVER_INFO_URL="https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json" && \
+    CHROMEDRIVER_DOWNLOAD_URL=$(wget -qO- "${CHROMEDRIVER_INFO_URL}" | jq -r '.channels.Stable.downloads.chromedriver[] | select(.platform=="linux64") | .url') && \
+    \
+    # Check if the URL was successfully retrieved
+    if [ -z "${CHROMEDRIVER_DOWNLOAD_URL}" ]; then \
+      echo "ERROR: Failed to retrieve ChromeDriver download URL." >&2; \
+      exit 1; \
+    fi && \
+    \
+    echo "INFO: Downloading ChromeDriver from ${CHROMEDRIVER_DOWNLOAD_URL}" && \
+    wget -q "${CHROMEDRIVER_DOWNLOAD_URL}" -O /tmp/chromedriver.zip && \
+    \
+    # Prepare destination directory
+    mkdir -p /app/drivers && \
+    unzip -q /tmp/chromedriver.zip -d /app/drivers && \
+    \
+    # ChromeDriver from CfT is often in a subdirectory like 'chromedriver-linux64' within the zip
+    # Move it to the expected location /app/drivers/chromedriver
+    if [ -f /app/drivers/chromedriver-linux64/chromedriver ]; then \
+      echo "INFO: Moving chromedriver from /app/drivers/chromedriver-linux64/chromedriver to /app/drivers/chromedriver" && \
+      mv /app/drivers/chromedriver-linux64/chromedriver /app/drivers/chromedriver && \
+      rmdir /app/drivers/chromedriver-linux64; \
+    elif [ ! -f /app/drivers/chromedriver ]; then \
+      echo "ERROR: ChromeDriver executable not found at /app/drivers/chromedriver or /app/drivers/chromedriver-linux64/chromedriver after unzip." >&2; \
+      # List contents for debugging
+      ls -lR /app/drivers; \
+      exit 1; \
+    else \
+      echo "INFO: ChromeDriver found directly at /app/drivers/chromedriver"; \
+    fi && \
+    \
+    chmod +x /app/drivers/chromedriver && \
+    \
+    # Verify chromedriver
+    echo "INFO: ChromeDriver version: $(/app/drivers/chromedriver --version)" && \
+    \
+    # Clean up downloaded files. jq might be removed if not needed later.
+    # wget and unzip are kept as they were installed in a general dependencies step.
+    # If jq is only for this step, you could 'apt-get purge -y jq && apt-get autoremove -y' here
+    # and remove jq from the initial apt-get install list if it's truly single-use.
+    # For simplicity here, jq is installed once with other deps.
+    rm /tmp/chromedriver.zip && \
+    # Optional: If jq is not needed by anything else, you can remove it and clean apt cache again
+    # apt-get purge -y jq && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+    echo "INFO: ChromeDriver setup complete."
+
 
 # Copy requirements first (for better caching)
 COPY requirements.txt .
@@ -64,6 +105,10 @@ USER appuser
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=app.py
+# Ensure PATH includes /app/drivers if your app relies on chromedriver being in PATH
+# Alternatively, configure Selenium to use /app/drivers/chromedriver directly
+ENV PATH="/app/drivers:${PATH}"
+
 
 # Expose the port that Flask will run on
 EXPOSE 5000
