@@ -37,7 +37,7 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     && apt-get install -y --no-install-recommends google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up ChromeDriver (<<<<< THIS SECTION IS UPDATED >>>>>)
+# Set up ChromeDriver (<<<<< THIS SECTION IS UPDATED for rmdir fix >>>>>)
 RUN \
     # Fetch the download URL for the latest stable ChromeDriver for Linux64
     CHROMEDRIVER_INFO_URL="https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json" && \
@@ -61,10 +61,11 @@ RUN \
     if [ -f /app/drivers/chromedriver-linux64/chromedriver ]; then \
       echo "INFO: Moving chromedriver from /app/drivers/chromedriver-linux64/chromedriver to /app/drivers/chromedriver" && \
       mv /app/drivers/chromedriver-linux64/chromedriver /app/drivers/chromedriver && \
-      rmdir /app/drivers/chromedriver-linux64; \
+      # Use rm -rf to remove the directory even if it contains other files like LICENSE
+      echo "INFO: Removing /app/drivers/chromedriver-linux64 directory" && \
+      rm -rf /app/drivers/chromedriver-linux64; \
     elif [ ! -f /app/drivers/chromedriver ]; then \
       echo "ERROR: ChromeDriver executable not found at /app/drivers/chromedriver or /app/drivers/chromedriver-linux64/chromedriver after unzip." >&2; \
-      # List contents for debugging
       ls -lR /app/drivers; \
       exit 1; \
     else \
@@ -76,14 +77,7 @@ RUN \
     # Verify chromedriver
     echo "INFO: ChromeDriver version: $(/app/drivers/chromedriver --version)" && \
     \
-    # Clean up downloaded files. jq might be removed if not needed later.
-    # wget and unzip are kept as they were installed in a general dependencies step.
-    # If jq is only for this step, you could 'apt-get purge -y jq && apt-get autoremove -y' here
-    # and remove jq from the initial apt-get install list if it's truly single-use.
-    # For simplicity here, jq is installed once with other deps.
     rm /tmp/chromedriver.zip && \
-    # Optional: If jq is not needed by anything else, you can remove it and clean apt cache again
-    # apt-get purge -y jq && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
     echo "INFO: ChromeDriver setup complete."
 
 
