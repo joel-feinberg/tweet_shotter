@@ -104,8 +104,16 @@ def index():
                     
                     if screenshot_data and screenshot_data.get('image_bytes'):
                         image_id = str(uuid.uuid4())
+                        # Store the raw bytes, not the BytesIO object
+                        if hasattr(screenshot_data['image_bytes'], 'getvalue'):
+                            # If it's a BytesIO object, we get its value
+                            image_bytes = screenshot_data['image_bytes'].getvalue()
+                        else:
+                            # If it's already raw bytes
+                            image_bytes = screenshot_data['image_bytes']
+                            
                         IMAGE_CACHE[image_id] = {
-                            'bytes': screenshot_data['image_bytes'], 
+                            'bytes': image_bytes, 
                             'filename': screenshot_data['filename']
                         }
                         logger.info(f"Stored image in cache. ID: {image_id}, Filename: {screenshot_data['filename']}. Cache size: {len(IMAGE_CACHE)}")
@@ -174,8 +182,16 @@ def index():
                                                                  lang=lang)
                         if screenshot_data and screenshot_data.get('image_bytes'):
                             image_id = str(uuid.uuid4())
+                            # Store the raw bytes, not the BytesIO object
+                            if hasattr(screenshot_data['image_bytes'], 'getvalue'):
+                                # If it's a BytesIO object, we get its value
+                                image_bytes = screenshot_data['image_bytes'].getvalue()
+                            else:
+                                # If it's already raw bytes
+                                image_bytes = screenshot_data['image_bytes']
+                                
                             IMAGE_CACHE[image_id] = {
-                                'bytes': screenshot_data['image_bytes'], 
+                                'bytes': image_bytes, 
                                 'filename': screenshot_data['filename']
                             }
                             logger.info(f"Stored image in cache (bulk). ID: {image_id}, Filename: {screenshot_data['filename']}. Cache size: {len(IMAGE_CACHE)}")
@@ -210,14 +226,30 @@ def serve_image(image_id):
     image_data = IMAGE_CACHE.get(image_id)
     if image_data and image_data['bytes']:
         logger.info(f"Serving image_id: {image_id}, filename: {image_data['filename']}")
-        # Ensure the BytesIO stream is at the beginning
-        image_data['bytes'].seek(0)
-        return send_file(
-            image_data['bytes'],
-            mimetype='image/png',
-            as_attachment=False, # Serve inline
-            download_name=image_data['filename'] # Suggested name if user saves
-        )
+        # Create a new BytesIO object from the existing one
+        # This ensures we have a fresh file-like object that won't be closed
+        # after it's sent to the client
+        try:
+            # Get the image bytes as they are (might be a BytesIO object)
+            if hasattr(image_data['bytes'], 'getvalue'):
+                # If it's a BytesIO object, we can get its value
+                image_bytes = image_data['bytes'].getvalue()
+            else:
+                # If it's already raw bytes
+                image_bytes = image_data['bytes']
+                
+            # Create a fresh BytesIO object for this request
+            bytes_io = io.BytesIO(image_bytes)
+            
+            return send_file(
+                bytes_io,
+                mimetype='image/png',
+                as_attachment=False, # Serve inline
+                download_name=image_data['filename'] # Suggested name if user saves
+            )
+        except Exception as e:
+            logger.error(f"Error serving image {image_id}: {str(e)}")
+            return "Error serving image", 500
     else:
         logger.warning(f"Image not found or data missing for image_id: {image_id}")
         return "Image not found", 404
@@ -245,8 +277,16 @@ def api_screenshot():
         screenshot_data = run_screenshot_capture(tweet_url, night_mode=night_mode, lang=lang)
         if screenshot_data and screenshot_data.get('image_bytes'):
             image_id = str(uuid.uuid4())
+            # Store the raw bytes, not the BytesIO object
+            if hasattr(screenshot_data['image_bytes'], 'getvalue'):
+                # If it's a BytesIO object, we get its value
+                image_bytes = screenshot_data['image_bytes'].getvalue()
+            else:
+                # If it's already raw bytes
+                image_bytes = screenshot_data['image_bytes']
+                
             IMAGE_CACHE[image_id] = {
-                'bytes': screenshot_data['image_bytes'], 
+                'bytes': image_bytes, 
                 'filename': screenshot_data['filename']
             }
             logger.info(f"Stored image in cache (API). ID: {image_id}, Filename: {screenshot_data['filename']}. Cache size: {len(IMAGE_CACHE)}")
