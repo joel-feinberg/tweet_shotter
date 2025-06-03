@@ -11,7 +11,7 @@ import tempfile # Added for temporary file creation
 # or ensure chromedriver is in your system PATH.
 CHROMEDRIVER_PATH = os.path.join(os.path.dirname(__file__), 'drivers', 'chromedriver')
 
-async def capture_tweet_screenshot(tweet_url, debug=False, night_mode=0, lang='en'): # Removed output_dir
+async def capture_tweet_screenshot(tweet_url, debug=False, night_mode=0, lang='en', show_engagement=False): # Removed output_dir
     """
     Captures a screenshot of a tweet using TweetCapture.
 
@@ -20,12 +20,15 @@ async def capture_tweet_screenshot(tweet_url, debug=False, night_mode=0, lang='e
     debug (bool): If True, prints detailed error information.
     night_mode (int): Sets the theme (0 = Light, 1 = Dark, 2 = Black).
     lang (str): Language code for the tweet display (e.g., 'en' for English, 'es' for Spanish).
+    show_engagement (bool): If True, shows engagement metrics (retweets/likes/views).
 
     Returns:
     dict: A dictionary containing 'image_bytes' (io.BytesIO object) and 
           'filename' (str, suggested filename for download), or None if there was an error.
     """
-    mode = 4
+    # Set mode based on show_engagement parameter:
+    # Mode 1 or 2 shows engagement metrics, Mode 4 (default) hides them
+    mode = 1 if show_engagement else 4
     wait_time = 1.0
     radius = 10
     scale = 1.0
@@ -111,13 +114,19 @@ async def capture_tweet_screenshot(tweet_url, debug=False, night_mode=0, lang='e
             except Exception as e:
                 print(f"Error deleting temporary file {temp_output_filename}: {e}")
 
-def run_screenshot_capture(tweet_url, night_mode=0, lang='en'): # Removed output_dir
+def run_screenshot_capture(tweet_url, night_mode=0, lang='en', show_engagement=False): # Removed output_dir
     """
     Synchronous wrapper to run the async screenshot capture.
     Returns a dict with image_bytes and filename, or None.
+    
+    Parameters:
+    tweet_url (str): The URL of the tweet to capture.
+    night_mode (int): Sets the theme (0 = Light, 1 = Dark, 2 = Black).
+    lang (str): Language code for the tweet display.
+    show_engagement (bool): If True, shows engagement metrics (retweets/likes/views).
     """
-    print(f"Starting screenshot capture for {tweet_url} with night_mode: {night_mode}, lang: {lang}")
-    result = asyncio.run(capture_tweet_screenshot(tweet_url, debug=True, night_mode=night_mode, lang=lang))
+    print(f"Starting screenshot capture for {tweet_url} with night_mode: {night_mode}, lang: {lang}, show_engagement: {show_engagement}")
+    result = asyncio.run(capture_tweet_screenshot(tweet_url, debug=True, night_mode=night_mode, lang=lang, show_engagement=show_engagement))
     
     if result and result['image_bytes']:
         print(f"Screenshot successfully captured in memory for {tweet_url}, suggested filename: {result['filename']}")
@@ -146,7 +155,7 @@ if __name__ == '__main__':
             current_night_mode = night_mode_cycle[current_night_mode_index % len(night_mode_cycle)]
             print(f"Processing URL: {url} with night_mode {current_night_mode}")
             # output_dir is no longer a param for run_screenshot_capture
-            screenshot_data = run_screenshot_capture(url, night_mode=current_night_mode) 
+            screenshot_data = run_screenshot_capture(url, night_mode=current_night_mode, show_engagement=True) # Test with engagement metrics
             
             if screenshot_data and screenshot_data['image_bytes']:
                 # For testing main.py directly, save the file

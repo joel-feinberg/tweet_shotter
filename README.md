@@ -2,7 +2,31 @@
 
 A web application for capturing clean screenshots of tweets for presentations and other uses.
 
-## Setup Instructions
+## Quick Start
+
+There are two easy ways to run this application:
+
+### Option 1: Using Docker (Recommended)
+
+Use our quick setup script which handles everything:
+
+```
+./run.sh
+```
+
+This will check if Docker is installed, build the container, and start the application.
+
+### Option 2: Native Installation
+
+If you prefer not to use Docker, you can run the application directly:
+
+```
+./run_native.sh
+```
+
+This script will set up a Python virtual environment, install dependencies, and start the application.
+
+## Manual Setup Instructions
 
 1. Install dependencies:
    ```

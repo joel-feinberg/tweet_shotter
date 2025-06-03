@@ -9,6 +9,8 @@ import random
 import io # Added for BytesIO
 import uuid # For generating unique IDs for in-memory images
 
+
+FLASK_RUN_PORT = 5001
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -75,6 +77,7 @@ def index():
             night_mode = 2 # Default to Black if conversion fails or value is invalid
         
         lang = request.form.get('lang', 'en')
+        show_engagement = request.form.get('show_engagement') == 'on'
         error_message = None
         screenshots_results = [] # Renamed from screenshots to avoid confusion with image data itself
         submitted_tweet_url = None
@@ -100,7 +103,8 @@ def index():
                     
                     screenshot_data = run_screenshot_capture(tweet_url, 
                                                              night_mode=current_theme_for_capture,
-                                                             lang=lang)
+                                                             lang=lang,
+                                                             show_engagement=show_engagement)
                     
                     if screenshot_data and screenshot_data.get('image_bytes'):
                         image_id = str(uuid.uuid4())
@@ -141,6 +145,7 @@ def index():
                                   error_message=error_message,
                                   submitted_tweet_url=submitted_tweet_url,
                                   selected_night_mode=night_mode_str, # Pass the original string for selection
+                                  show_engagement=show_engagement, # Pass the engagement setting
                                   input_mode=input_mode)
         
         elif input_mode == 'bulk':
@@ -169,6 +174,7 @@ def index():
                                           screenshots=screenshots_results,
                                           submitted_bulk_urls=submitted_bulk_urls,
                                           selected_night_mode=night_mode_str,
+                                          show_engagement=show_engagement,
                                           input_mode=input_mode)
 
                 for i, url in enumerate(valid_urls):
@@ -179,7 +185,8 @@ def index():
                         
                         screenshot_data = run_screenshot_capture(url,
                                                                  night_mode=current_theme_for_capture,
-                                                                 lang=lang)
+                                                                 lang=lang,
+                                                                 show_engagement=show_engagement)
                         if screenshot_data and screenshot_data.get('image_bytes'):
                             image_id = str(uuid.uuid4())
                             # Store the raw bytes, not the BytesIO object
@@ -213,10 +220,11 @@ def index():
                                   error_message=error_message,
                                   submitted_bulk_urls=submitted_bulk_urls,
                                   selected_night_mode=night_mode_str,
+                                  show_engagement=show_engagement, # Pass the engagement setting
                                   input_mode=input_mode)
 
     # GET request
-    return render_template('index.html', selected_night_mode='2', input_mode='single')
+    return render_template('index.html', selected_night_mode='2', input_mode='single', show_engagement=False)
 
 
 @app.route('/image/<image_id>')
@@ -267,14 +275,15 @@ def api_screenshot():
     tweet_url = request.json['tweet_url']
     night_mode = request.json.get('night_mode', 0) # Default to 0 (Light)
     lang = request.json.get('lang', 'en') # Default to 'en'
+    show_engagement = request.json.get('show_engagement', False) # Default to not showing engagement metrics
 
     if night_mode not in [0, 1, 2]:
         night_mode = 0 # Default to Light if invalid
 
-    logger.info(f"API request for URL: {tweet_url}, Theme: {night_mode}, Lang: {lang}")
+    logger.info(f"API request for URL: {tweet_url}, Theme: {night_mode}, Lang: {lang}, Show engagement: {show_engagement}")
 
     try:
-        screenshot_data = run_screenshot_capture(tweet_url, night_mode=night_mode, lang=lang)
+        screenshot_data = run_screenshot_capture(tweet_url, night_mode=night_mode, lang=lang, show_engagement=show_engagement)
         if screenshot_data and screenshot_data.get('image_bytes'):
             image_id = str(uuid.uuid4())
             # Store the raw bytes, not the BytesIO object
@@ -310,4 +319,18 @@ def api_screenshot():
 if __name__ == '__main__':
     # Set a secret key for session management if you plan to use sessions
     # app.secret_key = 'your_very_secret_key' 
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    
+    # Get port from environment or default with better error handling
+    port_env = os.environ.get('FLASK_RUN_PORT')
+    if port_env:
+        try:
+            port = int(port_env)
+            print(f"Using port {port} from environment variable")
+        except ValueError:
+            print(f"Warning: Invalid FLASK_RUN_PORT value '{port_env}', using default {FLASK_RUN_PORT}")
+            port = int(FLASK_RUN_PORT)
+    else:
+        port = int(FLASK_RUN_PORT)
+        print(f"Using default port {port}")
+    
+    app.run(debug=True, host='0.0.0.0', port=port)

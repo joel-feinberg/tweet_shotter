@@ -13,7 +13,10 @@ Welcome to the Tweet Screenshot Generator! This tool allows you to easily create
    - **Dark Mode**: Dark blue background, white text
    - **Auto Mode**: Uses Twitter's default theme setting
 
-4. **Generate the screenshot**: Click the "Generate Screenshot" button and wait a few seconds.
+4. **Optional settings**:
+   - **Show engagement metrics**: Check this option to include retweet/like/view counts in the screenshot.
+
+5. **Generate the screenshot**: Click the "Generate Screenshot" button and wait a few seconds.
 
 5. **Download your image**: Once the screenshot is generated, you can view and download it directly from the web interface.
 
@@ -34,7 +37,8 @@ Content-Type: application/json
 
 {
     "tweet_url": "https://twitter.com/username/status/123456789",
-    "night_mode": 0  // 0=light, 1=dark, 2=auto
+    "night_mode": 0,  // 0=light, 1=dark, 2=auto
+    "show_engagement": true  // Optional: Show engagement metrics (likes, retweets, views)
 }
 ```
 
