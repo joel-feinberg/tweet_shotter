@@ -9,7 +9,7 @@ import tempfile # Added for temporary file creation
 # Define the path to chromedriver.
 # Create a 'drivers' directory in your project root and place chromedriver there,
 # or ensure chromedriver is in your system PATH.
-CHROMEDRIVER_PATH = os.path.join(os.path.dirname(__file__), 'drivers', 'chromedriver')
+# CHROMEDRIVER_PATH = os.path.join(os.path.dirname(__file__), 'drivers', 'chromedriver') # Removed this line
 
 async def capture_tweet_screenshot(tweet_url, debug=False, night_mode=0, lang='en', show_engagement=False): # Removed output_dir
     """
@@ -52,11 +52,6 @@ async def capture_tweet_screenshot(tweet_url, debug=False, night_mode=0, lang='e
     if hide_all_media:
         tweet_capture_instance.hide_all_media()
     tweet_capture_instance.set_gui(gui)
-
-    if os.path.exists(CHROMEDRIVER_PATH):
-        tweet_capture_instance.set_chromedriver_path(CHROMEDRIVER_PATH)
-    else:
-        print(f"Warning: Chromedriver not found at {CHROMEDRIVER_PATH}. Using PATH.")
 
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     try:

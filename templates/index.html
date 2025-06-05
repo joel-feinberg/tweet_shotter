@@ -138,7 +138,6 @@
             font-size: 15px;
             font-weight: normal;
         }
-        }
         input[type="url"], select {
             padding: 12px;
             border: 1px solid #cfd9de;
@@ -272,12 +271,12 @@
             border: 1px solid #cfd9de;
         }
         .theme-preview.dark {
-            background-color: #15202b;
+            background-color: #15202b; /* Standard Twitter Dark Blue */
             color: #ffffff;
         }
-        .theme-preview.auto {
-            background: linear-gradient(135deg, #ffffff 0%, #ffffff 49%, #15202b 51%, #15202b 100%);
-            color: transparent;
+        .theme-preview.auto { /* This is used for Black Mode */
+            background-color: #000000; /* True Black */
+            color: #ffffff;
         }
         .theme-preview.random {
             background: linear-gradient(45deg, #f06, #06f, #0f0, #ff0);
@@ -409,7 +408,7 @@
                     </div>
                     
                     <div class="theme-option" onclick="selectTheme(2)" id="theme-2">
-                        <div class="theme-preview auto">Auto</div>
+                        <div class="theme-preview auto">Black</div>
                         <span class="theme-name">Black Mode</span>
                     </div>
                     
@@ -463,14 +462,22 @@
         {% if input_mode == 'bulk' and screenshots %}
             <div class="bulk-results-container" id="bulk_screenshot_results">
                 <h2>Bulk Screenshot Results ({{ screenshots|length }} URLs processed)</h2>
+                {% if screenshots|selectattr('screenshot_url')|list|length > 0 %}
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button type="button" id="downloadAllBtn" class="download-btn" onclick="downloadAllScreenshots()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Download All ({{ screenshots|selectattr('screenshot_url')|list|length }} successful image{{ 's' if screenshots|selectattr('screenshot_url')|list|length != 1 else '' }})
+                    </button>
+                </div>
+                {% endif %}
                 {% for item in screenshots %}
-                    <div class="screenshot-item {% if item.error %}error-item{% endif %}">
+                    <div class="screenshot-item {% if item.error %}error-item{% endif %}" data-url="{{ item.url }}">
                         <p class="tweet-url-display">Original URL: <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></p>
                         {% if item.screenshot_url %}
                             <div class="screenshot-container individual-bulk-screenshot">
                                 <img src="{{ item.screenshot_url }}" alt="Tweet Screenshot for {{ item.url }}">
                                 <div class="screenshot-actions">
-                                    <a href="{{ item.screenshot_url }}" download="{{ item.filename | default('screenshot.png') }}" class="download-btn">
+                                    <a href="{{ item.screenshot_url }}" download="{{ item.filename | default('screenshot.png') }}" class="download-btn individual-download-btn">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                             <polyline points="7 10 12 15 17 10"></polyline>
@@ -595,6 +602,28 @@
         const randomPreview = document.querySelector('.theme-preview.random');
         if (randomPreview) {
             randomPreview.textContent = '?'; // Display a question mark
+        }
+
+        function downloadAllScreenshots() {
+            const downloadLinks = document.querySelectorAll('#bulk_screenshot_results .individual-download-btn');
+            if (downloadLinks.length === 0) {
+                // This case should ideally not be hit if the button is conditionally rendered,
+                // but it's good for robustness.
+                alert('No successful screenshots available to download.');
+                return;
+            }
+
+            downloadLinks.forEach(link => {
+                // Create a new anchor element to robustly trigger the download
+                const tempLink = document.createElement('a');
+                tempLink.href = link.href; // The URL of the image
+                tempLink.setAttribute('download', link.getAttribute('download') || 'screenshot.png'); // The desired filename
+                
+                // Append to body, click, and remove. This is a common pattern for triggering downloads.
+                document.body.appendChild(tempLink);
+                tempLink.click();
+                document.body.removeChild(tempLink);
+            });
         }
     </script>
 </body>
