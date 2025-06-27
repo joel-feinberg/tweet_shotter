@@ -262,4 +262,3 @@ if __name__ == '__main__':
     # The Dockerfile should be set up to use Gunicorn.
     print(f"Starting application on host 0.0.0.0, port {port}")
     app.run(debug=True, host='0.0.0.0', port=port)
-p
