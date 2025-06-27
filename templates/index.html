@@ -446,7 +446,7 @@
                 <h2>Generated Screenshot</h2>
                 <img src="{{ screenshot_url }}" alt="Tweet Screenshot for {{ submitted_tweet_url }}">
                 <div class="screenshot-actions">
-                    <button type="button" class="download-btn" onclick="downloadImage('{{ screenshot_url }}', '{{ filename | default(&quot;screenshot.png&quot;) }}')">
+                    <button type="button" class="download-btn" data-screenshot-url="{{ screenshot_url }}" data-filename="{{ filename | default('screenshot.png') }}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
@@ -477,7 +477,7 @@
                             <div class="screenshot-container individual-bulk-screenshot">
                                 <img src="{{ item.screenshot_url }}" alt="Tweet Screenshot for {{ item.url }}">
                                 <div class="screenshot-actions">
-                                    <button type="button" class="download-btn individual-download-btn" onclick="downloadImage('{{ item.screenshot_url }}', '{{ item.filename | default(&quot;screenshot.png&quot;) }}')">
+                                    <button type="button" class="download-btn individual-download-btn" data-screenshot-url="{{ item.screenshot_url }}" data-filename="{{ item.filename | default('screenshot.png') }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                             <polyline points="7 10 12 15 17 10"></polyline>
@@ -614,6 +614,20 @@
             document.body.removeChild(link);
         }
 
+        // Add event listeners for download buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle single download buttons
+            document.querySelectorAll('.download-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const dataUrl = this.getAttribute('data-screenshot-url');
+                    const filename = this.getAttribute('data-filename');
+                    if (dataUrl && filename) {
+                        downloadImage(dataUrl, filename);
+                    }
+                });
+            });
+        });
+
         function downloadAllScreenshots() {
             const downloadButtons = document.querySelectorAll('#bulk_screenshot_results .individual-download-btn');
             if (downloadButtons.length === 0) {
@@ -622,12 +636,9 @@
             }
 
             downloadButtons.forEach(button => {
-                // Extract data from the onclick attribute
-                const onclickAttr = button.getAttribute('onclick');
-                const matches = onclickAttr.match(/downloadImage\('([^']+)',\s*'([^']+)'\)/);
-                if (matches && matches.length >= 3) {
-                    const dataUrl = matches[1];
-                    const filename = matches[2];
+                const dataUrl = button.getAttribute('data-screenshot-url');
+                const filename = button.getAttribute('data-filename');
+                if (dataUrl && filename) {
                     setTimeout(() => downloadImage(dataUrl, filename), 100); // Small delay between downloads
                 }
             });
