@@ -80,6 +80,21 @@ RUN \
     rm /tmp/chromedriver.zip && \
     echo "INFO: ChromeDriver setup complete."
 
+# Configure WebDriverManager cache directories
+# Create the cache directory structure that WebDriverManager expects
+RUN mkdir -p /app/.wdm/drivers/chromedriver && \
+    # Get Chrome version to match with ChromeDriver
+    CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+') && \
+    CHROMEDRIVER_VERSION=$(/app/drivers/chromedriver --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+') && \
+    \
+    # Create the expected cache directory structure for WebDriverManager
+    mkdir -p "/app/.wdm/drivers/chromedriver/${CHROMEDRIVER_VERSION}/linux64" && \
+    \
+    # Copy the pre-installed chromedriver to the cache location
+    cp /app/drivers/chromedriver "/app/.wdm/drivers/chromedriver/${CHROMEDRIVER_VERSION}/linux64/chromedriver" && \
+    chmod +x "/app/.wdm/drivers/chromedriver/${CHROMEDRIVER_VERSION}/linux64/chromedriver" && \
+    \
+    echo "INFO: ChromeDriver cached for WebDriverManager at /app/.wdm/drivers/chromedriver/${CHROMEDRIVER_VERSION}/linux64/chromedriver"
 
 # Copy requirements first (for better caching)
 COPY requirements.txt .
@@ -103,9 +118,15 @@ ENV FLASK_APP=app.py
 # Alternatively, configure Selenium to use /app/drivers/chromedriver directly
 ENV PATH="/app/drivers:${PATH}"
 
+# Configure WebDriverManager environment variables
+ENV WDM_LOCAL=1
+ENV WDM_LOG=0
+ENV WDM_SSL_VERIFY=0
+# Set the WebDriverManager cache directory to our pre-populated cache
+ENV WDM_CACHE_ROOT="/app/.wdm"
 
 # Expose the port that Flask will run on
 EXPOSE 5000
 
 # Run with Gunicorn production server
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "120", "app:app"]

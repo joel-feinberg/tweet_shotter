@@ -7,9 +7,16 @@ import io # Added for in-memory file handling
 import tempfile # Added for temporary file creation
 
 # Define the path to chromedriver.
-# Create a 'drivers' directory in your project root and place chromedriver there,
-# or ensure chromedriver is in your system PATH.
-# CHROMEDRIVER_PATH = os.path.join(os.path.dirname(__file__), 'drivers', 'chromedriver') # Removed this line
+# The ChromeDriver should be available at /app/drivers/chromedriver in the Docker container
+CHROMEDRIVER_PATH = os.path.join(os.path.dirname(__file__), 'drivers', 'chromedriver')
+
+# Configure environment variables to control WebDriverManager
+# This prevents it from downloading ChromeDriver at runtime
+os.environ['WDM_LOCAL'] = '1'  # Store drivers locally in the project
+os.environ['WDM_LOG'] = '0'  # Disable WebDriverManager logs
+os.environ['WDM_SSL_VERIFY'] = '0'  # Disable SSL verification for faster downloads if needed
+# Set the cache directory to our pre-populated location
+os.environ['WDM_CACHE_ROOT'] = '/app/.wdm'
 
 async def capture_tweet_screenshot(tweet_url, debug=False, night_mode=0, lang='en', show_engagement=False): # Removed output_dir
     """
@@ -47,6 +54,14 @@ async def capture_tweet_screenshot(tweet_url, debug=False, night_mode=0, lang='e
         radius=radius,
         scale=scale
     )
+    
+    # Check if pre-installed ChromeDriver exists
+    if os.path.exists(CHROMEDRIVER_PATH):
+        print(f"Pre-installed ChromeDriver found at: {CHROMEDRIVER_PATH}")
+        # Make sure it's executable
+        os.chmod(CHROMEDRIVER_PATH, 0o755)
+    else:
+        print(f"Warning: ChromeDriver not found at {CHROMEDRIVER_PATH}, WebDriverManager will download it")
     
     # Add memory-optimized Chrome arguments for Cloud Run
     # These options reduce Chrome's memory footprint significantly
