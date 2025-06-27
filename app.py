@@ -8,6 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import random
 import io # Added for BytesIO
 import uuid # For generating unique IDs for in-memory images
+import base64 # Added for base64 encoding
 
 
 FLASK_RUN_PORT = 5001
@@ -47,19 +48,25 @@ if not os.path.exists(app.config['SCREENSHOT_FOLDER']):
         print(f"Error creating screenshot directory {app.config['SCREENSHOT_FOLDER']}: {e}")
         # Depending on the desired behavior, you might want to exit or raise an exception here
 
-# SCREENSHOT_DIR and related directory creation logic can be removed if not storing files at all.
-# For now, we'll keep it, as main.py might still use it for direct testing.
-# However, app.py will no longer rely on it for serving images to the user.
-
-# In-memory cache for screenshots (simple dictionary)
-# For a production app, consider a more robust cache like Redis or Memcached, 
-# especially if dealing with many users or needing to scale.
-# Also, implement a cleanup strategy for this cache.
-IMAGE_CACHE = {}
+# REMOVED: In-memory cache for screenshots - this was causing issues in Cloud Run
+# when workers restarted due to memory limits. We now return images directly as base64 data URLs.
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+def image_to_base64_data_url(image_bytes):
+    """Convert image bytes to base64 data URL"""
+    if hasattr(image_bytes, 'getvalue'):
+        # If it's a BytesIO object, get its value
+        image_data = image_bytes.getvalue()
+    else:
+        # If it's already raw bytes
+        image_data = image_bytes
+    
+    # Encode to base64
+    base64_data = base64.b64encode(image_data).decode('utf-8')
+    return f"data:image/png;base64,{base64_data}"
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -107,26 +114,16 @@ def index():
                                                              show_engagement=show_engagement)
                     
                     if screenshot_data and screenshot_data.get('image_bytes'):
-                        image_id = str(uuid.uuid4())
-                        # Store the raw bytes, not the BytesIO object
-                        if hasattr(screenshot_data['image_bytes'], 'getvalue'):
-                            # If it's a BytesIO object, we get its value
-                            image_bytes = screenshot_data['image_bytes'].getvalue()
-                        else:
-                            # If it's already raw bytes
-                            image_bytes = screenshot_data['image_bytes']
-                            
-                        IMAGE_CACHE[image_id] = {
-                            'bytes': image_bytes, 
-                            'filename': screenshot_data['filename']
-                        }
-                        logger.info(f"Stored image in cache. ID: {image_id}, Filename: {screenshot_data['filename']}. Cache size: {len(IMAGE_CACHE)}")
+                        # Convert to base64 data URL instead of storing in cache
+                        data_url = image_to_base64_data_url(screenshot_data['image_bytes'])
+                        logger.info(f"Screenshot converted to data URL for {tweet_url}, filename: {screenshot_data['filename']}")
+                        
                         screenshots_results.append({
                             'url': tweet_url,
-                            'screenshot_url': url_for('serve_image', image_id=image_id),
+                            'screenshot_url': data_url,
                             'filename': screenshot_data['filename']
                         })
-                        logger.info(f"Screenshot captured for {tweet_url}, image_id: {image_id}")
+                        logger.info(f"Screenshot captured for {tweet_url}")
                     else:
                         error_message = "Failed to capture screenshot. Tweet might be protected, deleted, or an error occurred."
                         logger.error(f"Screenshot capture failed for URL: {tweet_url}")
@@ -188,26 +185,16 @@ def index():
                                                                  lang=lang,
                                                                  show_engagement=show_engagement)
                         if screenshot_data and screenshot_data.get('image_bytes'):
-                            image_id = str(uuid.uuid4())
-                            # Store the raw bytes, not the BytesIO object
-                            if hasattr(screenshot_data['image_bytes'], 'getvalue'):
-                                # If it's a BytesIO object, we get its value
-                                image_bytes = screenshot_data['image_bytes'].getvalue()
-                            else:
-                                # If it's already raw bytes
-                                image_bytes = screenshot_data['image_bytes']
-                                
-                            IMAGE_CACHE[image_id] = {
-                                'bytes': image_bytes, 
-                                'filename': screenshot_data['filename']
-                            }
-                            logger.info(f"Stored image in cache (bulk). ID: {image_id}, Filename: {screenshot_data['filename']}. Cache size: {len(IMAGE_CACHE)}")
+                            # Convert to base64 data URL instead of storing in cache
+                            data_url = image_to_base64_data_url(screenshot_data['image_bytes'])
+                            logger.info(f"Bulk: Screenshot converted to data URL for {url}, filename: {screenshot_data['filename']}")
+                            
                             screenshots_results.append({
                                 'url': url,
-                                'screenshot_url': url_for('serve_image', image_id=image_id),
+                                'screenshot_url': data_url,
                                 'filename': screenshot_data['filename']
                             })
-                            logger.info(f"Bulk: Screenshot captured for {url}, image_id: {image_id}")
+                            logger.info(f"Bulk: Screenshot captured for {url}")
                         else:
                             screenshots_results.append({'url': url, 'error': "Failed to capture screenshot"})
                             logger.error(f"Bulk: Screenshot capture failed for URL: {url}")
@@ -227,45 +214,8 @@ def index():
     return render_template('index.html', selected_night_mode='2', input_mode='single', show_engagement=False)
 
 
-@app.route('/image/<image_id>')
-def serve_image(image_id):
-    logger.info(f"Attempting to serve image_id: {image_id}")
-    logger.debug(f"Current IMAGE_CACHE keys: {list(IMAGE_CACHE.keys())}")
-    image_data = IMAGE_CACHE.get(image_id)
-    if image_data and image_data['bytes']:
-        logger.info(f"Serving image_id: {image_id}, filename: {image_data['filename']}")
-        # Create a new BytesIO object from the existing one
-        # This ensures we have a fresh file-like object that won't be closed
-        # after it's sent to the client
-        try:
-            # Get the image bytes as they are (might be a BytesIO object)
-            if hasattr(image_data['bytes'], 'getvalue'):
-                # If it's a BytesIO object, we can get its value
-                image_bytes = image_data['bytes'].getvalue()
-            else:
-                # If it's already raw bytes
-                image_bytes = image_data['bytes']
-                
-            # Create a fresh BytesIO object for this request
-            bytes_io = io.BytesIO(image_bytes)
-            
-            return send_file(
-                bytes_io,
-                mimetype='image/png',
-                as_attachment=False, # Serve inline
-                download_name=image_data['filename'] # Suggested name if user saves
-            )
-        except Exception as e:
-            logger.error(f"Error serving image {image_id}: {str(e)}")
-            return "Error serving image", 500
-    else:
-        logger.warning(f"Image not found or data missing for image_id: {image_id}")
-        return "Image not found", 404
-
-# Remove the old /screenshots/<filename> route as it's no longer used for user-facing images
-# @app.route('/screenshots/<filename>')
-# def display_screenshot(filename):
-#     return send_from_directory(app.config['SCREENSHOT_FOLDER'], filename)
+# REMOVED: serve_image route - no longer needed since we're using base64 data URLs
+# This eliminates the 404 errors when workers restart and clear the in-memory cache
 
 @app.route('/api/screenshot', methods=['POST'])
 def api_screenshot():
@@ -285,28 +235,14 @@ def api_screenshot():
     try:
         screenshot_data = run_screenshot_capture(tweet_url, night_mode=night_mode, lang=lang, show_engagement=show_engagement)
         if screenshot_data and screenshot_data.get('image_bytes'):
-            image_id = str(uuid.uuid4())
-            # Store the raw bytes, not the BytesIO object
-            if hasattr(screenshot_data['image_bytes'], 'getvalue'):
-                # If it's a BytesIO object, we get its value
-                image_bytes = screenshot_data['image_bytes'].getvalue()
-            else:
-                # If it's already raw bytes
-                image_bytes = screenshot_data['image_bytes']
-                
-            IMAGE_CACHE[image_id] = {
-                'bytes': image_bytes, 
-                'filename': screenshot_data['filename']
-            }
-            logger.info(f"Stored image in cache (API). ID: {image_id}, Filename: {screenshot_data['filename']}. Cache size: {len(IMAGE_CACHE)}")
-            # For API, we might return the image URL or the image data directly
-            # Returning URL is consistent with the web UI
-            image_url = url_for('serve_image', image_id=image_id, _external=True)
-            logger.info(f"API: Screenshot captured for {tweet_url}, image_id: {image_id}, URL: {image_url}")
+            # Convert to base64 data URL for API response
+            data_url = image_to_base64_data_url(screenshot_data['image_bytes'])
+            logger.info(f"API: Screenshot converted to data URL for {tweet_url}, filename: {screenshot_data['filename']}")
+            
             return jsonify({
                 "message": "Screenshot captured successfully",
                 "tweet_url": tweet_url,
-                "screenshot_url": image_url,
+                "screenshot_url": data_url,  # Now returns base64 data URL
                 "filename": screenshot_data['filename']
             }), 200
         else:
