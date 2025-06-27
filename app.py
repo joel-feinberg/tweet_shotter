@@ -317,20 +317,12 @@ def api_screenshot():
         return jsonify({"error": "An internal error occurred"}), 500
 
 if __name__ == '__main__':
-    # Set a secret key for session management if you plan to use sessions
-    # app.secret_key = 'your_very_secret_key' 
+    # Cloud Run provides the PORT environment variable.
+    # Default to 8080 for local development if PORT isn't set.
+    port = int(os.environ.get("PORT", 8080))
     
-    # Get port from environment or default with better error handling
-    port_env = os.environ.get('FLASK_RUN_PORT')
-    if port_env:
-        try:
-            port = int(port_env)
-            print(f"Using port {port} from environment variable")
-        except ValueError:
-            print(f"Warning: Invalid FLASK_RUN_PORT value '{port_env}', using default {FLASK_RUN_PORT}")
-            port = int(FLASK_RUN_PORT)
-    else:
-        port = int(FLASK_RUN_PORT)
-        print(f"Using default port {port}")
-    
+    # Use Gunicorn for production, but Flask's development server is fine for now.
+    # In a real production setup (and for Cloud Run), you'd use a Gunicorn command.
+    # The Dockerfile should be set up to use Gunicorn.
+    print(f"Starting application on host 0.0.0.0, port {port}")
     app.run(debug=True, host='0.0.0.0', port=port)
