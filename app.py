@@ -12,13 +12,12 @@ import base64 # Added for base64 encoding
 
 
 FLASK_RUN_PORT = 5001
-# Configure logging
+# Configure logging - removed file handler that might cause issues in container environment
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('tweet_screenshotter.log')
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger('tweet_screenshotter')
@@ -39,14 +38,15 @@ SCREENSHOT_DIR = os.path.join(PROJECT_ROOT, 'output_screenshots')
 app.config['SCREENSHOT_FOLDER'] = SCREENSHOT_DIR
 app.config['ALLOWED_EXTENSIONS'] = {'png'}
 
-# Ensure the screenshot output directory exists
-if not os.path.exists(app.config['SCREENSHOT_FOLDER']):
-    try:
-        os.makedirs(app.config['SCREENSHOT_FOLDER'])
-        print(f"Created screenshot directory: {app.config['SCREENSHOT_FOLDER']}")
-    except OSError as e:
-        print(f"Error creating screenshot directory {app.config['SCREENSHOT_FOLDER']}: {e}")
-        # Depending on the desired behavior, you might want to exit or raise an exception here
+# Ensure the screenshot output directory exists (commented out for Cloud Run compatibility)
+# The directory creation might cause issues in some container environments
+# if not os.path.exists(app.config['SCREENSHOT_FOLDER']):
+#     try:
+#         os.makedirs(app.config['SCREENSHOT_FOLDER'])
+#         print(f"Created screenshot directory: {app.config['SCREENSHOT_FOLDER']}")
+#     except OSError as e:
+#         print(f"Error creating screenshot directory {app.config['SCREENSHOT_FOLDER']}: {e}")
+#         # Depending on the desired behavior, you might want to exit or raise an exception here
 
 # REMOVED: In-memory cache for screenshots - this was causing issues in Cloud Run
 # when workers restarted due to memory limits. We now return images directly as base64 data URLs.

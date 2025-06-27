@@ -1,7 +1,5 @@
 tweet-capture
-# selenium might be a direct or indirect dependency, ensure it's installed if issues arise.
-# You might need to specify versions if you encounter compatibility problems, e.g.:
-# tweetcapture==0.1.5
-Flask
-gunicorn
-Werkzeug
+Flask==2.3.3
+gunicorn==21.2.0
+Werkzeug==2.3.7
+selenium
