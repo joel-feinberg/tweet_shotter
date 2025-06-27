@@ -47,25 +47,56 @@ async def capture_tweet_screenshot(tweet_url, debug=False, night_mode=0, lang='e
         radius=radius,
         scale=scale
     )
+    
+    # Add memory-optimized Chrome arguments for Cloud Run
+    # These options reduce Chrome's memory footprint significantly
+    tweet_capture_instance.add_chrome_argument('--headless')
+    tweet_capture_instance.add_chrome_argument('--no-sandbox')
+    tweet_capture_instance.add_chrome_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
+    tweet_capture_instance.add_chrome_argument('--disable-gpu')  # GPU acceleration not needed for headless
+    tweet_capture_instance.add_chrome_argument('--disable-extensions')  # Disable extensions to save memory
+    tweet_capture_instance.add_chrome_argument('--disable-plugins')  # Disable plugins
+    tweet_capture_instance.add_chrome_argument('--disable-background-timer-throttling')
+    tweet_capture_instance.add_chrome_argument('--disable-renderer-backgrounding')
+    tweet_capture_instance.add_chrome_argument('--disable-background-networking')
+    tweet_capture_instance.add_chrome_argument('--disable-features=TranslateUI,BlinkGenPropertyTrees')
+    tweet_capture_instance.add_chrome_argument('--aggressive-cache-discard')
+    tweet_capture_instance.add_chrome_argument('--memory-pressure-off')
+    tweet_capture_instance.add_chrome_argument('--max_old_space_size=128')  # Limit V8 heap size to 128MB
+    # Conservative memory limits
+    tweet_capture_instance.add_chrome_argument('--memory-pressure-thresholds=conservative')
+    tweet_capture_instance.add_chrome_argument('--enable-low-end-device-mode')  # Enable low-memory optimizations
+    
     tweet_capture_instance.set_lang(lang)
     tweet_capture_instance.set_wait_time(wait_time)
     if hide_all_media:
         tweet_capture_instance.hide_all_media()
     tweet_capture_instance.set_gui(gui)
 
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     try:
         url_parts = tweet_url.split('/')
-        tweet_identifier = "tweet"
-        if len(url_parts) > 3 and url_parts[-2] == "status":
-            tweet_identifier = f"{url_parts[-3]}_{url_parts[-1]}"
+        username = "unknown"
+        tweet_id = "tweet"
+        
+        # Extract username and tweet ID from URL
+        # Format: https://x.com/username/status/tweet_id or https://twitter.com/username/status/tweet_id
+        if len(url_parts) >= 4 and url_parts[-2] == "status":
+            username = url_parts[-3]  # Extract username
+            tweet_id = url_parts[-1].split('?')[0]  # Extract tweet ID, remove query params
         elif len(url_parts) > 1:
-            tweet_identifier = url_parts[-1] if url_parts[-1] else url_parts[-2]
-        tweet_identifier = tweet_identifier.split('?')[0]
-    except IndexError:
-        tweet_identifier = "tweet"
-    
-    suggested_filename = f"{tweet_identifier}_{timestamp}.png"
+            # Fallback for unusual URL formats
+            username = url_parts[-2] if len(url_parts) > 2 else "unknown"
+            tweet_id = url_parts[-1].split('?')[0] if url_parts[-1] else "tweet"
+            
+        # Clean up username (remove @ if present)
+        username = username.lstrip('@')
+        
+        # Create descriptive filename: username_tweetid_timestamp.png
+        suggested_filename = f"{username}_{tweet_id}_{timestamp}.png"
+    except (IndexError, AttributeError):
+        # Fallback filename if URL parsing fails
+        suggested_filename = f"tweet_screenshot_{timestamp}.png"
 
     temp_output_filename = None # Initialize for the finally block
     try:

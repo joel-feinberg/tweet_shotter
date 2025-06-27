@@ -446,14 +446,14 @@
                 <h2>Generated Screenshot</h2>
                 <img src="{{ screenshot_url }}" alt="Tweet Screenshot for {{ submitted_tweet_url }}">
                 <div class="screenshot-actions">
-                    <a href="{{ screenshot_url }}" download class="download-btn">
+                    <button type="button" class="download-btn" onclick="downloadImage('{{ screenshot_url }}', '{{ filename | default(&quot;screenshot.png&quot;) }}')">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
                         Download Image
-                    </a>
+                    </button>
                 </div>
             </div>
         {% endif %}
@@ -477,14 +477,14 @@
                             <div class="screenshot-container individual-bulk-screenshot">
                                 <img src="{{ item.screenshot_url }}" alt="Tweet Screenshot for {{ item.url }}">
                                 <div class="screenshot-actions">
-                                    <a href="{{ item.screenshot_url }}" download="{{ item.filename | default('screenshot.png') }}" class="download-btn individual-download-btn">
+                                    <button type="button" class="download-btn individual-download-btn" onclick="downloadImage('{{ item.screenshot_url }}', '{{ item.filename | default(&quot;screenshot.png&quot;) }}')">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                             <polyline points="7 10 12 15 17 10"></polyline>
                                             <line x1="12" y1="15" x2="12" y2="3"></line>
                                         </svg>
                                         Download Image
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         {% elif item.error %}
@@ -604,25 +604,32 @@
             randomPreview.textContent = '?'; // Display a question mark
         }
 
+        // Function to download a single image with proper filename for base64 data URLs
+        function downloadImage(dataUrl, filename) {
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function downloadAllScreenshots() {
-            const downloadLinks = document.querySelectorAll('#bulk_screenshot_results .individual-download-btn');
-            if (downloadLinks.length === 0) {
-                // This case should ideally not be hit if the button is conditionally rendered,
-                // but it's good for robustness.
+            const downloadButtons = document.querySelectorAll('#bulk_screenshot_results .individual-download-btn');
+            if (downloadButtons.length === 0) {
                 alert('No successful screenshots available to download.');
                 return;
             }
 
-            downloadLinks.forEach(link => {
-                // Create a new anchor element to robustly trigger the download
-                const tempLink = document.createElement('a');
-                tempLink.href = link.href; // The URL of the image
-                tempLink.setAttribute('download', link.getAttribute('download') || 'screenshot.png'); // The desired filename
-                
-                // Append to body, click, and remove. This is a common pattern for triggering downloads.
-                document.body.appendChild(tempLink);
-                tempLink.click();
-                document.body.removeChild(tempLink);
+            downloadButtons.forEach(button => {
+                // Extract data from the onclick attribute
+                const onclickAttr = button.getAttribute('onclick');
+                const matches = onclickAttr.match(/downloadImage\('([^']+)',\s*'([^']+)'\)/);
+                if (matches && matches.length >= 3) {
+                    const dataUrl = matches[1];
+                    const filename = matches[2];
+                    setTimeout(() => downloadImage(dataUrl, filename), 100); // Small delay between downloads
+                }
             });
         }
     </script>
